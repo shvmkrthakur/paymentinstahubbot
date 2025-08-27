@@ -54,7 +54,7 @@ async def reply_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     # Your bot token
-    app = Application.builder().token("YOUR_BOT_TOKEN_HERE").build()
+    app = Application.builder().token("8293205720:AAGPGvxkXJmy_-zj0rYSjFruKTba-1bVit8").build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
