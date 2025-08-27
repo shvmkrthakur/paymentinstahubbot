@@ -4,6 +4,10 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 # Owner Telegram user ID
 OWNER_ID = 7347144999  
 
+# /start command
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("👋 Hello! Send me a message and I’ll forward it to the owner.")
+
 # When a user sends a message
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -33,6 +37,7 @@ def main():
     # Your bot token
     app = Application.builder().token("8293205720:AAGPGvxkXJmy_-zj0rYSjFruKTba-1bVit8").build()
 
+    app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(CommandHandler("reply", reply_command))
 
