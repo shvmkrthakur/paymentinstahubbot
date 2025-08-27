@@ -1,5 +1,5 @@
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 
 # Owner Telegram user ID
 OWNER_ID = 7347144999  
@@ -15,10 +15,29 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Forward message to owner with username + ID
     msg_to_owner = f"📩 Message from @{user.username or 'NoUsername'} (ID: {user.id}):\n\n{text}"
-    await context.bot.send_message(chat_id=OWNER_ID, text=msg_to_owner)
+
+    # Add "Reply" button
+    keyboard = InlineKeyboardMarkup(
+        [[InlineKeyboardButton("💬 Reply", callback_data=f"reply:{user.id}")]]
+    )
+
+    await context.bot.send_message(chat_id=OWNER_ID, text=msg_to_owner, reply_markup=keyboard)
 
     # Confirm to user
     await update.message.reply_text("✅ Your message has been sent to the owner.")
+
+# Handle button press
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if not query.data.startswith("reply:"):
+        return
+
+    user_id = query.data.split(":")[1]
+    # Insert /reply command in owner chat
+    reply_cmd = f"/reply {user_id} "
+    await query.message.reply_text(f"✍️ Type your reply after this command:\n{reply_cmd}")
 
 # Owner replies to a user
 async def reply_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -35,10 +54,11 @@ async def reply_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     # Your bot token
-    app = Application.builder().token("8293205720:AAGPGvxkXJmy_-zj0rYSjFruKTba-1bVit8").build()
+    app = Application.builder().token("YOUR_BOT_TOKEN_HERE").build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(CommandHandler("reply", reply_command))
 
     print("🤖 Bot is running...")
