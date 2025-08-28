@@ -1,44 +1,42 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 
-# Owner Telegram user ID
-OWNER_ID =  7994709010
+# Multiple Owners
+OWNER_IDS = [7347144999, 1234567890]  # <-- यहां अपने owners डालो
 
-# Dictionary to store reply sessions (owner replying to which user)
+# Store reply sessions (which owner is replying to which user)
 reply_sessions = {}
 
 # /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("👋 Hello! Send me a message (text or photo) and I’ll forward it to the owner.")
+    await update.message.reply_text("👋 Hello! Send me a message (text/photo) and I’ll forward it to the owners.")
 
-# When a user (NOT owner) sends a text or photo
+# Handle normal user messages
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id == OWNER_ID:
-        return  # Ignore owner's own messages
-
     user = update.effective_user
 
-    if update.message.text:  # Text message
+    if update.message.text:
         text = update.message.text
         msg_to_owner = f"📩 Message from @{user.username or 'NoUsername'} (ID: {user.id}):\n\n{text}"
         keyboard = InlineKeyboardMarkup(
             [[InlineKeyboardButton("💬 Reply", callback_data=f"reply:{user.id}:{user.username or 'NoUsername'}")]]
         )
-        await context.bot.send_message(chat_id=OWNER_ID, text=msg_to_owner, reply_markup=keyboard)
+        for owner in OWNER_IDS:
+            await context.bot.send_message(chat_id=owner, text=msg_to_owner, reply_markup=keyboard)
 
-    elif update.message.photo:  # Photo message
+    elif update.message.photo:
         photo = update.message.photo[-1].file_id
         caption = update.message.caption or ""
         msg_to_owner = f"📸 Photo from @{user.username or 'NoUsername'} (ID: {user.id}):\n{caption}"
         keyboard = InlineKeyboardMarkup(
             [[InlineKeyboardButton("💬 Reply", callback_data=f"reply:{user.id}:{user.username or 'NoUsername'}")]]
         )
-        await context.bot.send_photo(chat_id=OWNER_ID, photo=photo, caption=msg_to_owner, reply_markup=keyboard)
+        for owner in OWNER_IDS:
+            await context.bot.send_photo(chat_id=owner, photo=photo, caption=msg_to_owner, reply_markup=keyboard)
 
-    # Confirm to user
-    await update.message.reply_text("✅ Your message has been sent to the owner.")
+    await update.message.reply_text("✅ Your message has been sent to the owners.")
 
-# Handle button press (when owner clicks reply)
+# Handle reply button press
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -50,58 +48,62 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = int(parts[1])
     username = parts[2]
 
-    # Save reply session
-    reply_sessions[OWNER_ID] = user_id
+    # Save session for that specific owner
+    reply_sessions[query.from_user.id] = user_id
 
     await query.message.reply_text(
-        f"✍️ You are replying to @{username} (ID: {user_id}).\nSend any message (text/photo/sticker) and I’ll deliver it."
+        f"✍️ You are replying to @{username} (ID: {user_id}).\nNow send any message (text/photo/sticker)."
     )
 
-# Forward owner's reply back to user
+# Forward reply from owner to user
 async def forward_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != OWNER_ID:
-        return  # Only allow owner to use this
+    owner_id = update.effective_user.id
+    if owner_id not in OWNER_IDS:
+        return
 
-    if OWNER_ID not in reply_sessions:
+    if owner_id not in reply_sessions:
         return await update.message.reply_text("⚠️ Please click 'Reply' on a user message first.")
 
-    user_id = reply_sessions[OWNER_ID]
+    user_id = reply_sessions[owner_id]
 
-    # Forward text
+    # Text
     if update.message.text:
         await context.bot.send_message(chat_id=user_id, text=f"📬 Reply from owner:\n{update.message.text}")
-        await update.message.reply_text("✅ Message sent.")
+        await update.message.reply_text("✅ Message sent to user.")
 
-    # Forward photo
+    # Photo
     elif update.message.photo:
         photo = update.message.photo[-1].file_id
         caption = f"📬 Reply from owner:\n{update.message.caption or ''}"
         await context.bot.send_photo(chat_id=user_id, photo=photo, caption=caption)
-        await update.message.reply_text("✅ Photo sent.")
+        await update.message.reply_text("✅ Photo sent to user.")
 
-    # Forward stickers, documents, etc.
+    # Sticker
     elif update.message.sticker:
         await context.bot.send_sticker(chat_id=user_id, sticker=update.message.sticker.file_id)
-        await update.message.reply_text("✅ Sticker sent.")
+        await update.message.reply_text("✅ Sticker sent to user.")
+
+    # Document
     elif update.message.document:
         await context.bot.send_document(chat_id=user_id, document=update.message.document.file_id, caption="📬 Reply from owner")
-        await update.message.reply_text("✅ Document sent.")
+        await update.message.reply_text("✅ Document sent to user.")
+
     else:
-        await update.message.reply_text("⚠️ This file type is not supported yet.")
+        await update.message.reply_text("⚠️ This message type is not supported yet.")
 
 def main():
     app = Application.builder().token("8293205720:AAGPGvxkXJmy_-zj0rYSjFruKTba-1bVit8").build()
 
     app.add_handler(CommandHandler("start", start))
 
-    # Users ke liye handler (OWNER_ID exclude)
-    app.add_handler(MessageHandler((filters.TEXT | filters.PHOTO) & ~filters.COMMAND, handle_message))
+    # Messages from normal users (exclude owners)
+    app.add_handler(MessageHandler((filters.TEXT | filters.PHOTO) & ~filters.COMMAND & ~filters.User(OWNER_IDS), handle_message))
 
-    # Callback for reply button
+    # Reply button
     app.add_handler(CallbackQueryHandler(button_handler))
 
-    # Owner ke replies ke liye alag handler
-    app.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, forward_reply))
+    # Messages from owners only
+    app.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND & filters.User(OWNER_IDS), forward_reply))
 
     print("🤖 Bot is running...")
     app.run_polling()
