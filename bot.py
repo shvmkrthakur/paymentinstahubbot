@@ -2,7 +2,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 
 # Multiple Owners
-OWNER_IDS = [7347144999, 1234567890]  # <-- यहां अपने owners डालो
+OWNER_IDS = [7347144999, 7994709010]  # <-- यहां अपने owners डालो
 
 # Store reply sessions (which owner is replying to which user)
 reply_sessions = {}
