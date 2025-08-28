@@ -2,7 +2,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 
 # Owner Telegram user ID
-OWNER_ID = 7347144999  
+OWNER_ID = [7347144999, 7994709010]
 
 # Dictionary to store reply sessions (owner replying to which user)
 reply_sessions = {}
@@ -11,8 +11,11 @@ reply_sessions = {}
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("👋 Hello! Send me a message (text or photo) and I’ll forward it to the owner.")
 
-# When a user sends a text or photo
+# When a user (NOT owner) sends a text or photo
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id == OWNER_ID:
+        return  # Ignore owner's own messages
+
     user = update.effective_user
 
     if update.message.text:  # Text message
@@ -57,7 +60,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Forward owner's reply back to user
 async def forward_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
-        return
+        return  # Only allow owner to use this
 
     if OWNER_ID not in reply_sessions:
         return await update.message.reply_text("⚠️ Please click 'Reply' on a user message first.")
@@ -90,9 +93,15 @@ def main():
     app = Application.builder().token("8293205720:AAGPGvxkXJmy_-zj0rYSjFruKTba-1bVit8").build()
 
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT | filters.PHOTO & ~filters.COMMAND, handle_message))
+
+    # Users ke liye handler (OWNER_ID exclude)
+    app.add_handler(MessageHandler((filters.TEXT | filters.PHOTO) & ~filters.COMMAND, handle_message))
+
+    # Callback for reply button
     app.add_handler(CallbackQueryHandler(button_handler))
-    app.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, forward_reply))  # Catch all replies from owner
+
+    # Owner ke replies ke liye alag handler
+    app.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, forward_reply))
 
     print("🤖 Bot is running...")
     app.run_polling()
