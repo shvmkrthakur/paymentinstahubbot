@@ -2,7 +2,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 
 # Owner Telegram user ID
-OWNER_ID = [7347144999, 7994709010]
+OWNER_ID =  7994709010
 
 # Dictionary to store reply sessions (owner replying to which user)
 reply_sessions = {}
