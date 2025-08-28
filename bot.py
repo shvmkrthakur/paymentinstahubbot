@@ -16,6 +16,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     text = update.message.text
 
+    # 🚫 Ignore if the message is from owner
+    if user.id == OWNER_ID:
+        return
+
     # Forward message to owner with username + ID
     msg_to_owner = f"📩 Message from @{user.username or 'NoUsername'} (ID: {user.id}):\n\n{text}"
 
@@ -70,9 +74,9 @@ def main():
     app = Application.builder().token("8293205720:AAGPGvxkXJmy_-zj0rYSjFruKTba-1bVit8").build()
 
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    app.add_handler(CallbackQueryHandler(button_handler))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, owner_message))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))   # Users
+    app.add_handler(CallbackQueryHandler(button_handler))  # Button clicks
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, owner_message))    # Owner replies
 
     print("🤖 Bot is running...")
     app.run_polling()
